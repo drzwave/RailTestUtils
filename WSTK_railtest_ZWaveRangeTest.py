@@ -21,180 +21,179 @@
 
 import telnetlib
 import serial
-import multiprocessing
 import time
+import threading
 
-# TODO: Use argparse to supply these as command line arguments
+# TODO: supply these as command line arguments
 tx_node_ip = "192.168.7.95"
 tx_node_name = b"[TX]" # for debug printing
 rx_node_ip = "192.168.7.94"
 rx_node_name = b"[RX]" # for debug printing
-FrameCount = b'2'
+FrameCount = b'100'
 
 # Region: 0=EU, 1=US, 2=ANZ, 3=HK etc - See A=INS14283 700 series Bring-up/Test HW Development - section 4 for the full list
 REGION = b"1"
 
-TxPower = b"50" # Raw value from 0 to 110, 0=lowest power, 110=max power
+TxPower = b"04" # Raw value from 0 to 110, 0=lowest power, 110=max power
 
 Channel = b"0" # 0=110kbit, 1=40k, 2=9.6k
 
-debug_print = True # True for verbose CLI messages (useful for debugging)
+DEBUG = 5 # 0=debugging messages off, higher numbers print more messages
 
 #This is just a unique pattern that we can filter for to reject real network packets
-packet_string = b"0x0f 0x0e 0x11 0x22 0x33 0x44 0x55 0x66 0x77 0x88 0x99 0xaa 0xbb 0xcc" # TODO add 0xdd 0xee 0x10 0x11
+packet_string = b"0x0f 0x0e 0x11 0x22 0x33 0x44 0x55 0x14 0x77 0x88 0x99 0xaa 0xbb 0xcc" # TODO add 0xdd 0xee 0x10 0x11
 
 prompt_string = b">" # railtest prompt is ">" character
 
-#Space out the packets to give the CLI time to print the packets. This could
-# probably be optimized for test duration
-tx_delay_ms = b"50"
+#Space out the packets to give the CLI time to print the packets.
+tx_delay_ms = b"100"
 
-def init_node (wstk_ip, nodename):
+class ZWaveRangeTest():
+    ''' Send FrameCount Z-Wave frames from TX_NODE_IP to RX_NODEIP '''
+    def __init___(self):
+        self.usage()
 
-    print (nodename + b" START INIT")
-    tempserial = telnetlib.Telnet(wstk_ip, 4901, 5) # Telnet port to the RailTest CLI
-    print ("@1",end="")
-    management = telnetlib.Telnet(wstk_ip, 4902, 5)
-    print ("@2",end="")
+    def InitTx(TxIp):
+        ''' Returns the TX handle after opening the Tx Telnet and initializing or None if it fails'''
+        if DEBUG>5: print("START INIT TX:")
+        try:
+            txser = telnetlib.Telnet(TxIp, 4901, 5) # Telnet port to the RailTest CLI
+        except:
+            return(None)
+        txser.write(b"rx 0\r\n") # enter idle mode - See INS14283 section 4.4.3 for the initialization sequence
+        resp=txser.read_until(prompt_string,1) # capture the return data from the WSTK for debugging
+        if DEBUG>9: print(resp) # capture the return data from the WSTK for debugging
+        txser.write(b"SetZWaveMode 1 3\r\n")
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        txser.write(b"SetChannel " + Channel + b" \r\n")
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        txser.write(b"SetZWaveRegion " + REGION + b" \r\n")
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        time.sleep(.5)  # sometimes the WSTK needs a break otherwise it doesn't receive the entire command
+        txser.write(b"SetTxPayload 7 20\r\n")
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        txser.write(b"SetTXLength 20\r\n")
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        txser.write(b"SetPower " + TxPower + b" raw\r\n")
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        txser.write(b"settxdelay " + tx_delay_ms +  b"\r\n") # set tx delay
+        resp=txser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        if DEBUG>5: print("END INIT TX")
+        return(txser)
 
-    # Reset the target - restart Railtest from the beginning
-    management.read_until(b'WSTK>',1)
-    print ("@3",end="")
-    management.write(b"target reset 3A000108\r\n")
-    time.sleep(1) # wait for target to boot
-    management.close()
-    print ("@4",end="")
+    def InitRx(RxIp):
+        ''' Returns the RX handle after opening the Tx Telnet and initializing or None if it fails'''
+        if DEBUG>5: print("START INIT RX:")
+        try:
+            rxser = telnetlib.Telnet(RxIp, 4901, 5) # Telnet port to the RailTest CLI
+        except:
+            return(None)
+        rxser.write(b"rx 0\r\n") # enter idle mode - See INS14283 section 4.4.3 for the initialization sequence
+        resp=rxser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        rxser.write(b"SetZWaveMode 1 3\r\n")
+        resp=rxser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        rxser.write(b"SetChannel " + Channel + b" \r\n")
+        resp=rxser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        rxser.write(b"SetZWaveRegion " + REGION + b" \r\n")
+        resp=rxser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        rxser.write(b"rx 1 \r\n")
+        resp=rxser.read_until(prompt_string,1)
+        if DEBUG>9: print(resp)
+        if DEBUG>5: print('END INIT RX:')
+        return(rxser)
 
+    def TxSend(txser):
+        ''' Send the TX frames '''
+        errors=0
+        time.sleep(3)   # wait for the RX to be ready - TODO could be a queue or semaphore but this is easy...
+        if DEBUG>1: print("Begin Transmit")
+        txser.write(b"tx " + FrameCount + b"\r\n") # start tx in 5s to give time for the RX to be ready
+        resp = txser.read_until(prompt_string,1)
+        while 1:
+            exp = txser.expect([b"(txEnd)"],1) #nonblock, 1 sec timeout
+            resp = resp + exp[2]
+            if exp[0] != -1:
+                break
+            if b"error" in resp:
+                errors += 1
+                if DEBUG>3: print(exp)
+        if DEBUG>5: print("TxSend done: errors={}".format(errors))
 
-    #init node using railtest CLI - generic for both RX and TX
-    out_string = (nodename + b" INIT! WSTK IP address: " + wstk_ip.encode('ascii'))
-    print ("@5",end="")
-    out_string = out_string + tempserial.read_until(prompt_string,1)
-    print ("@6",end="")
-    tempserial.write(b"rx 0\r\n") # enter idle mode - See INS14283 section 4.4.3 for the initialization sequence
-    print ("@7",end="")
-    out_string = out_string + tempserial.read_until(prompt_string,1)
-    tempserial.write(b"SetZWaveMode 1 3\r\n")
-    out_string = out_string + tempserial.read_until(prompt_string,1)
-    print ("@8",end="")
-    tempserial.write(b"SetChannel " + Channel + b" \r\n")
-    out_string = out_string + tempserial.read_until(prompt_string,1)
-    print ("@9")
-    tempserial.write(b"SetZWaveRegion " + REGION + b" \r\n")
-    out_string = out_string + tempserial.read_until(prompt_string,1)
-    print ("@10")
-    if debug_print == True:
-        print(out_string)
-        print(nodename + b" END INIT")
+    def RxGet(rxser):
+        ''' Receives the frames and returns the count of successfully received frames'''
+        rssi_vals = []
+        successes=0
+        timeout=0
+        while timeout<(int(FrameCount)*1.1 + 5) and successes<int(FrameCount):  # TODO - change this to a queue or handshake from the TX thread to end shortly after all frames have been transmitted.
+            # Wait for data received from other node
+            resp = rxser.expect([packet_string],1) #nonblock, 1 sec timeout
+            if resp[0] != -1:
+                successes = successes + 1
+                rssival = resp[2].split(b'{rssi:',1)[1].split(b'}')[0]
+                rssi_vals.append(int(rssival))
+                if DEBUG>9: print("rssi={}".format(rssival))
+            timeout+=1
 
-    return tempserial
-
-txserial = init_node(tx_node_ip, tx_node_name)
-rxserial = init_node(rx_node_ip, rx_node_name)
-done_queue = multiprocessing.Queue() #queue from TX task to RX task
-
-# This is the thread for tx
-# Send outbound packets and notify inbound thread when done
-def tx_thread():
-    errors = 0
-    successes = 0.0 # defined as float for division result
-    rssi_vals = []
-
-    # Set up TX specific stuff
-    txserial.write(b"SetTxPayload 7 20\r\n")
-    resp = tx_node_name + txserial.read_until(prompt_string,1)
-    txserial.write(b"SetTXLength 20\r\n")
-    resp = tx_node_name + txserial.read_until(prompt_string,1)
-    txserial.write(b"SetPower " + TxPower + b" raw\r\n")
-    resp = tx_node_name + txserial.read_until(prompt_string,1)
-    txserial.write(b"settxdelay " + tx_delay_ms +  b"\r\n") # set tx delay
-    resp = resp + tx_node_name + txserial.read_until(prompt_string,1)
-    txserial.write(b"tx " + FrameCount + b"\r\n") # start tx
-    resp = resp + tx_node_name + txserial.read_until(prompt_string,1)
-    while 1:
-        exp = txserial.expect([b"(txEnd)"],1) #nonblock, 1 sec timeout
-        resp = resp + exp[2]
-        if exp[0] != -1:
-            break
-    if debug_print == True:
-        print(resp)
-    if b"error" in resp:
-        errors += 1
-
-    # Tell RX node that we're done with TX
-    #done_queue.put('DONE')
-    if debug_print == True:
-        print("{} TOTAL TX: {}".format(tx_node_name, FrameCount))
-        print("{} TOTAL ERRORS: {}".format(tx_node_name, errors))
-
-
-# This is the RX thread
-# Log any received packets, stop when message received from TX thread
-def rx_thread():
-
-    errors = 0
-    successes = 0.0 # defined as float for division result
-    rssi_vals = []
-
-    rxserial.write(b"rx 0\r\n")
-    resp = rx_node_name + rxserial.read_until(prompt_string,1)
-    print(resp)
-    rxserial.write(b"SetTxLength 60\r\n")
-    resp = rx_node_name + rxserial.read_until(prompt_string,1)
-    print(resp)
-    rxserial.write(b"SetTxPayload 7 60\r\n")
-    resp = rx_node_name + rxserial.read_until(prompt_string,1)
-    print(resp)
-    # Doesn't seem to need to add the channel hopping stuff...
-    rxserial.write(b"rx 1\r\n") # start rx
-    resp = rx_node_name + rxserial.read_until(prompt_string,1)
-    print(resp)
-    print("###########Here###########")
-    if debug_print == True:
-        print(resp)
-
-    timeout=0
-    while timeout<(int(FrameCount)*1.5 + 10):
-        # Wait for data received from other node
-        print("#1")
-        #resp = rxserial.expect([packet_string],1) #nonblock, 1 sec timeout
-        resp = rxserial.read_lazy()
-        print("#2 {}.".format(resp))
-        time.sleep(1)
+        print("PACKETS TX: {}".format(int(FrameCount)))
+        print("PACKETS RX: {}".format(successes))
+        print("PER: {:.0%} at power {}".format(1 - (successes/int(FrameCount)),int(TxPower)))
+        if len(rssi_vals) != 0:
+            print("RSSI (AVG:MAX:MIN) dBm: {}:{}:{}".format(int(sum(rssi_vals)/len(rssi_vals)), max(rssi_vals), min(rssi_vals)))
+        return(successes)
+    
+    def ResetWSTK(wstk_ip):
+        ''' Reset the WSTK to be sure we're starting from a known point
+            Returns an error code if failed and None if OK
         '''
-        if resp[0] != -1:
-            successes = successes + 1
-            rssival = resp[2].split('{rssi:',1)[1].split('}')[0]
-            rssi_vals.append(int(rssival))
-            if debug_print == True:
-                print(rx_node_name + " Packet received!")
-                print("RSSI = " + rssival)
-        else:
-            try:
-                if done_queue.get(False,1) == 'DONE': #nonblock, 1 sec timeout
-                    break
-            except:
-                pass # No-op (but error not thrown)
-        '''
-        timeout+=1
+        try:
+            management = telnetlib.Telnet(wstk_ip, 4902, 5)
+        except:
+            return(-1)
 
-    print("PACKETS RX: {}".format(int(successes)))
-    print("PACKETS RX: {}".format(FrameCount))
-    print("PER: {0:.0%}".format(1 - (successes/int(FrameCount))))
-    if len(rssi_vals) != 0:
-        print("RSSI (AVG:MAX:MIN) dBm: {}:{}:{}".format(sum(rssi_vals)/len(rssi_vals), max(rssi_vals), min(rssi_vals)))
-    print("\r\n")
+        management.read_until(b'WSTK>',1)
+        management.write(b"target reset 3A000108\r\n") # why the 3A000108?
+        time.sleep(1) # wait for target to boot
+        management.close()
+        return(None)
 
-# Set up the threads
+    def usage():
+        print("python WSTK_railtest_ZWaveRangeTest [options go here...]")
+        print("Use the python -u option to see the print statements come out unbuffered which can help find timing problems")
+
 if __name__ == '__main__':
-    print("Init RX_PROCESS")
-    rx_process = multiprocessing.Process(name='RX_process', target=rx_thread)
-    print("Init TX_PROCESS")
-    tx_process = multiprocessing.Process(name='TX_process', target=tx_thread)
-    time.sleep(5)
-    print("Start RX_PROCESS")
-    rx_process.start()
-    time.sleep(5)
-    print("Start TX_PROCESS")
-    tx_process.start()
+    ''' Run the Z-Wave Range test '''
+
+    # Reset both boards to start with a clean setup
+    if ZWaveRangeTest.ResetWSTK(tx_node_ip) != None:
+        print("failed to open Tx")
+        exit()
+    if ZWaveRangeTest.ResetWSTK(rx_node_ip) != None:
+        print("failed to open Rx")
+        exit()
+
+    # open the telnet ports and initialize each WSTK
+    txser=ZWaveRangeTest.InitTx(tx_node_ip)
+    if txser == None: 
+        print("failed to open TX Telnet")
+        exit()
+    rxser=ZWaveRangeTest.InitRx(rx_node_ip)
+    if rxser == None: 
+        print("failed to open RX Telnet")
+        exit()
+
+    # The RX is already running and ready to receive so start the transmit in its own thread so it can run in parallel
+    txthread=threading.Thread(target=ZWaveRangeTest.TxSend(txser))
+
+    ZWaveRangeTest.RxGet(rxser) # capture the RX frames and calculate the result
 

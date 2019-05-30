@@ -1,0 +1,190 @@
+> help
+help
+<command> <args> <help text>
+  u=uint8, v=uint16, w=uint32, s=int32, b=string, ?=Anything, *=0 or more of previous
+ --- Application Configuration ---
+setEventConfig         ww         [mask events] Modify RAIL_ConfigEvents with the given mask and events
+printDataRates                    Print the data rates of the current PHY
+resetCounters                     Resets the Tx and Rx counters
+setPeripheralEnable    u          [enable] Enable(1) or Disable(0) LEDs and LCD peripherals
+setNotifications       u          [enable] Enable(1) or Disable(0) status prints that happen asynchronously (rxPacket, txEnd, txError)
+getLogLevels                      Get whether notifications are set or peripherals are enabled
+getVersion                        Get version information.
+getVersionVerbose                 Get verbose version information.
+setPtiProtocol         u          [protocol] Set PTI protocol for Network Analyzer (0=Custom 2=Thread 3=BLE 4=Connect 5=Zigbee 6=Z-Wave)
+setPrintingEnable      u          [enable] Universally enable or disable all printing in railtest. Enabled by default.
+ --- Receive and Transmit ---
+rx                     w          [enable] Enable(1) or Disable(0) receive mode
+rxAt                   wbwbu*     [start mode end mode rxTransEndSched hardEnd] Configure scheduled receive.
+setRxOptions           w*         [rxOptionsBitField] Configure receive options, based on RAIL_RX_OPTION defines
+tx                     w          [n] Transmit n packets with tx options. If n is 0 transmit infinitely
+txWithOptions          w          [n] Same functionality as tx. This command is deprecated
+txAt                   wb*        [time mode] Transmit a packet at the time and mode specified
+txAfterRx              w          [time] Schedule a TX for a delay in us after each receive. 0 to disable
+configTxOptions        w*         [txOptionsBitfield] Sets the bitmask to be used as the tx options. See #defines starting with "RAIL_TX_OPTION_" in rail_types.h
+setFixedLength         v          [fixedLength] Configure fixed length
+setchannel             v          [channel] Set the current radio channel
+getchannel                        Get the current radio channel
+setPower               sb*        [power raw] Set the current transmit power in deci dBm, or raw units if 'raw' is specified
+getPower                          Get the current transmit power in deci dBm
+setPowerConfig         uvv        [mode voltage rampTime] Set the current transmit power config.
+getPowerConfig                    Get the current transmit power config.
+sweepTxPower                      Sweep power levels for the current PA and stream at each level.
+offsetLqi              s          [offset] Add this offset value to the hardware's 8-bit hardware LQI value before being made available to the application.
+getRssi                w*         [wait] Get RSSI in dBm if the receiver is turned on. Optionally specify whether or not to wait for a valid value in case it is initially invalid.
+sweepPower             ssw        [lowPower] [hiPower] [period] Sweep power in square wave fashion. Specify power in deci dBm, period in microseconds.
+startAvgRssi           wu*        [averageTimeUs] [channel] Start AGC RSSI averaging
+getAvgRssi                        Get AGC RSSI averaging result.
+setRssiOffset          s          Sets the RSSI offset in dBm.
+getRssiOffset                     Gets the RSSI offset.
+setTxTone              w          [enable] Enable(1) or Disable(0) a tone from the radio
+setTxStream            w          [enable] Enable(1) or Disable(0) a PN9 stream from the radio
+status                            Print the current status counters
+fifoStatus                        Print the current fifo related counters
+setTxDelay             w          [delay] Set the inter-packet delay in milliseconds for repeated Tx
+getTxDelay                        Get the inter-packet delay in milliseconds for repeated Tx
+setTxPayload           vu*        [offset byte0 byte1 ...] Set the packet bytes to be sent
+setTxPayloadQuiet      vu*        [offset byte0 byte1 ...] Functions like 'setTxPayload', but outputs less information
+setTxLength            v          [length] Set the number of bytes to load into the FIFO before transmitting. Actual packet length may vary based on radio configuration
+printTxPacket                     Print the current Tx data and length
+peek                   v*         [number of bytes] [offset] Peek at the start of receive buffer.
+getTime                           Get the current time from the RAIL timebase in microseconds
+setTime                w          Set the current time in the RAIL timebase in microseconds
+dataConfig             bb         [txMethod rxMethod] Choose between 'pkt' and 'fifo' data methods for RAIL Tx and Rx
+setRxFifo              v          [length] Set the receive buffer's length, which is used in both packet mode and FIFO mode. The length cannot be set above RX_BUFFER_SIZE.
+setTxFifoThreshold     v          [txFifoThreshold] Set the Tx Fifo Almost Emtpy threshold
+setRxFifoThreshold     v          [rxFifoThreshold] Set the Rx Fifo Almost Emtpy threshold
+fifoModeTestOptions    uu         [txFifoManual rxFifoManual] Manual control over RAILTEST fifo actions
+rxFifoManualRead       uvu*       [appendedInfo bytesToRead printTiming] Read bytes out of receive fifo and print
+txFifoManualLoad                  Will attempt to load data into the fifo if there is space
+fifoReset              uu         [tx rx] Reset the transmit or receive fifo
+abortRxPacket          w          [abortOffset] Delay after sync word before idling radio.
+printTxAcks            w          [printTxAcks] Enable printing of tx ack packets as they happen.
+configRxChannelHopping w*         [(channel mode parameter delay)...] Configure RX Channel Hopping to hop in the sequence provided, for the given RAIL_RxChannelHoppingMode_t mode, parameter, and interchannel delay. One mode and parameter must be provided per channel.
+enableRxChannelHopping uu*        [enable (reset)] Enable/disable rx channel hopping. The channel hopping will start again from the first member of the sequence is reset is true.
+getChannelHoppingRssi  u          [channelIndex] Get the latest RSSI for the channel at the index of the hopping sequence specified.
+configRxDutyCycle      www        [mode parameter delay] Configure RX Duty Cycle mode to cycle the receiver with the given parameters.
+enableRxDutyCycle      u          [enable] Enable/disable rx duty cycle mode.
+setTxAltPreambleLen    w          [length] Set an alternate preable length for transmit, which can be enabled in txOptions.
+printRxErrors          w          [enable] Enable (1) or Disable (0) printing of Rx error packets
+ --- Energy Modes and RF Sense ---
+sleep                  uw*        [EM# [RfSenseUs RfBand]] Sleep in EM# with RFSenseUs on RfBand (0=none,1=2.4GHz,2=SubGHz,3=both) (and UART input)
+rfsense                ww         [RfSenseUs RfBand] Start RfSensing with RSenseUs on RfBand
+ --- Address Filtering ---
+configAddressFilter    wu*        [matchTable offset0 size0 offset1 size1] Configure the addresss filter.
+setAddressFiltering    u          [enable] Enable(1) or Disable(0) address filtering.
+getAddressFiltering               Print the current state of address filtering.
+printAddresses                    Print the current address filtering addresses.
+setAddress             uuu*       [field index value...] Set the address value at (field, index) to value.
+setAddressEnable       uuu        [field index enable] Enable address filtering for the given address.
+ --- Error Rate Testing ---
+perRx                  ww         [packets delayUs] Start a Packet Error Rate test. 'perRx 0 0' will disable ongoing test.
+perStatus                         Output the results of the PER test. Also see 'status' command
+setBerConfig           w          [number bytes] Set number of bytes to receive in BER mode; 536870911 = max number of bytes to test; 0 = set max number of bytes to test
+berRx                  w          [enable] Enable(1) or Disable(0) BER receive mode
+berStatus                         Get status of last BER test or of current running test; status information is reset for commands setBerConfig and berRx enable
+ --- Listen Before Talk (LBT) ---
+setLbtMode             b*         [modeStr] Set LBT mode off, csma, lbt
+getLbtParams                      Get the current LBT parameters
+setLbtParams           uuusvvw    [minBo maxBo tries thresh backoff duration timeout] Set LBT parameters
+ --- 802.15.4 Mode ---
+enable802154           bvvv       [defaultState idleTime turnaroundTime ackTimeout] Enable 802.15.4 mode
+config2p4GHz802154     u*         [antDiv coex] Configure the radio for 2.4 GHz 802.15.4. This should be called in addition to 'enable802154'.
+config863MHz802154                Configure the radio for 863 MHz 802.15.4 GB868. This should be called in addition to 'enable802154'.
+config915MHz802154                Configure the radio for 915 MHz 802.15.4 GB868. This should be called in addition to 'enable802154'.
+acceptFrames           uuuu       [command ack data beacon] Enable(1) or Disable(0) 802.15.4 frame acceptance. Default settings for 802.15.4 are 1 0 1 1.
+setPromiscuousMode     u          [enable] Enable(1) or Disable(0) promiscuous mode
+setPanCoordinator      u          [enable] Enable(1) or Disable(0) the node acting as a PAN coordinator
+setPanId802154         vu*        [panId index] Set the PAN ID for the given index. Index defaults to 0 if not given
+setShortAddr802154     vu*        [shortAddr index] Set the short address(es) for the given index. Index defaults to 0 if not given
+setLongAddr802154      uuuuuuuuu* [longAddr_0 ... longAddr_7 index] Set the long address for the given index. Index defaults to 0 if not given
+setAddresses802154     vvb*       [panId0 shortAddr0 longAddr0 panId1 ... ] Set all 802.15.4 address information.
+setDataReqLatency      w          [us] Set data request event processing latency.
+ --- BLE Mode ---
+setBleMode             u          [enable] Set BLE mode to enabled or disabled
+getBleMode                        Get the current BLE mode
+setBleChannelParams    uw*        [logicalChannel accessAddr crcInit disableWhiten] Configure channel parameters related to BLE
+setBlePhySwitchToRx    uw*        [enable phy timeDelta physicalChannel logicalChannel accessAddr crcInit disableWhiten] Configure parameters for BLE PhySwitchToRx. RX is entered timeDelta us after sync word of received packet.
+setBleAdvertising      u          [advChannel] Configure for BLE advertising on channel 37, 38, or 39
+setBle1Mbps            u*         [isViterbi] Switch to the 1Mbps BLE PHY
+setBle2Mbps            u*         [isViterbi] Switch to the 2Mbps BLE PHY
+setBleCoding           u          [coding] Switch to the given RAIL_BLE_Coding_t value
+ --- Z-Wave Mode ---
+setZWaveMode           u*         [enable [options]] Set Z-Wave mode to enabled or disabled
+getZWaveMode                      Get the current Z-Wave mode
+setZWaveRegion         u          [region] Set Z-Wave region
+getZWaveRegion                    Get the current Z-Wave region
+listZWaveRegions                  List supported Z-Wave regions
+getZWaveBaudRate                  Get the baudrate of the current Z-Wave channel
+setZWaveNodeId         u          [nodeId] Sets Z-Wave NodeId
+setZWaveHomeId         wu         [homeId hash] Sets Z-Wave HomeId and its hash
+ --- RAIL Timer ---
+setTimer               wb         [timeout mode] Set the RAIL timer timeout. You can use either an absolute (abs) or relative (rel) timer mode.
+timerCancel                       Cancel the RAIL timer if it's active.
+printTimerStats                   Print current timer configuration.
+enableMultiTimer       u          [enable] Enable (1) or disable (0) the multiTimer API for use. By default the multiTimer is disabled for single protocol RAIL and enabled for multiprotocol RAIL.
+setMultiTimer          uwb        [timer timeout mode] Set a specific timer's timeout, starting with timer 0. You can use either an absolute (abs) or relative (rel) timer mode.
+multiTimerCancel       u          [timer] Cancel a specific timer if it's active, starting with timer 0.
+printMultiTimerStats   u          [timer] Print a specific timer's configuration, starting with timer 0.
+delayUs                w          [delay] Blocking delay for specified number of microseconds.
+ --- Auto Acking ---
+autoAckConfig          bvvv       [defaultState idleTime turnaroundTime ackTimeout] Configure and enable auto ack functionality in RAIL.
+autoAckDisable                    Disable auto ack. Use autoAckConfig to reenable.
+setAckPayload          vu*        [offset byte0 byte1 ...] Set the ack bytes to be sent.
+setAckLength           v          [length] Set the number of bytes to transmit for ack payloads
+printAckPacket                    Print the current ack data and length
+getAutoAck                        Print the current state of auto acking.
+autoAckPause           uu         [RxPause TxPause] Pause(1) or Resume(0) Auto Acking
+setTxAckOptions        uu         [cancelAck useTxBuf] Enable(1) or Disable(0) feature for one receive
+ --- GPIO Functions ---
+setGpioOutPin          buu        [port pin state] Set a GPIO pin's data out bit.
+ --- Diagnostic and Test ---
+getConfigIndex                    Get the index of the current radio configuration selected for use. See the entries in *channelConfigs[]. Start with index 0.
+setConfigIndex         u          [index] Set the index of the current radio configuration selected for use, and associate this new configuration to the current railHandle. See the entries in *channelConfigs[]. Start with index 0.
+getmemw                ww*        [address count] Read count 32bit words starting at address
+setmemw                ww*        [address value...] Write as many 32bit values as specified starting at address
+setCtune               v          [ctune] Set the value of CTUNE in the CMU->HFXOSTEADYSTATECTRL register
+getCtune                          Get the value of CTUNE in the CMU->HFXOSTEADYSTATECTRL register
+setPaCtune             uu         [txPaCtune] [rxPaCtune] Set the value of PACTUNE for TX and RX mode
+enablePaCal            u          [enable] Enable(1) or Disable(0) PA power calibration
+setDebugSignal         ?          Configure chip specific debug output. Use 'setDebugSignal help' for more details.
+setDebugMode           w          [mode] 1 = Frequency Override. 0 = Disable debug mode
+freqOverride           w          [freq] Change to freq specified in Hz. Requires debug mode to be enabled. Only small frequency deviations from the current configuration are supported.
+directMode             u          [enable] Enable(1) or Disable(0) direct mode
+directTx               u          [enable] Enable(1) or Disable(0) TX in direct mode
+txCancel               s          [delay] Set the time in microseconds after which we should cancel a tx (a negative value disables this)
+getRandom              vu*        [len hidden] Get len bytes of random data from the radio. Only print them to the screen if hidden is 0 (default).
+setTxUnderflow         w          [enable] Enable(1) or Disable(0) TX underflows
+setRxOverflow          w*         [enable delayUs] Enable(1) or Disable(0) RX overflows. The overflow will be caused by hanging in the interrupt handler for delayUs
+setCalibrations        w          [enable] Enable(1) or Disable(0) RAIL calibrations
+setTxTransitions       bb         [txSuccess txError] Set each RAIL TX state transition value to r(x) or i(dle)
+setRxTransitions       bb         [rxSuccess rxError] Set each RAIL RX state transition value to t(x), r(x), or i(dle).
+setTimings             vvvv*      [idleToRx txToRx idleToTx rxToTx rxSearch txToRxSearch] Set RAIL state transition timings in microseconds
+forceAssert            w          [errorCode] Force a RAIL assert with the given error code.
+printEvents            w*         [printEvents<31:0> [printEvents<63:32>]] Enable printing of RAIL events in chronological order.
+getAppMode                        Print the current app mode of RAILTEST. Values printed are those to be found in AppMode_t.
+getRadioState                     Get the RAIL radio state. Values returned correspond to RAIL_RadioState_t.
+verifyRadio            wuuu       [durationUs restart override callback] Verify radio memory contents and return after duration in microseconds. Restart (1) or resume (0) from last run.
+enterScript            u*         [(flash)] Enter script entry mode. Conclude entry mode with text 'endScript'. Specify if script is saved to RAM (0, default) or RAM and flash (1). If saved to flash, script will run on boot.
+runScript              u*         [(flash)] Run the script entered via enterScript. Run the script in RAM (0, default) or in flash (1).
+printScript            u*         [(flash)] Print the script entered via enterScript. Display the script in RAM (0, default) or in flash (1).
+clearScript            u*         [(flash)] Clear the script entered via enterScript. Clear the script in RAM (0, default) or in flash (1).
+wait                   wb*        [time (mode)] Suspend processing of any input until time in the future. Optionally specify whether the time is relative (rel) (default) or absolute (abs).
+reset                             Perform a reboot of the chip
+> {{(rxPacket)}{len:20}{timeUs:422547736}{crc:Pass}{rssi:-57}{lqi:112}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x01 0x81 0x06 0x16 0x89 0x00 0x20 0x39 0x8a 0x60 0x0d 0x01 0x05 0x25 0x01 0x00}}
+{{(rxPacket)}{len:20}{timeUs:422556933}{crc:Pass}{rssi:-47}{lqi:114}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x01 0x81 0x06 0x16 0x89 0x00 0x21 0x39 0x8a 0x60 0x0d 0x01 0x05 0x25 0x01 0x00}}
+{{(rxPacket)}{len:20}{timeUs:422566353}{crc:Pass}{rssi:-51}{lqi:112}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x01 0x81 0x06 0x16 0x89 0x00 0x22 0x39 0x8a 0x60 0x0d 0x01 0x05 0x25 0x01 0x00}}
+{{(rxPacket)}{len:13}{timeUs:422583223}{crc:Pass}{rssi:-86}{lqi:90}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x89 0x81 0x06 0x0f 0x01 0x03 0x21 0x39 0x8a}}
+{{(rxPacket)}{len:13}{timeUs:422592158}{crc:Pass}{rssi:-51}{lqi:120}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x89 0x81 0x06 0x0f 0x01 0x03 0x20 0x39 0x8a}}
+{{(rxPacket)}{len:13}{timeUs:422600659}{crc:Pass}{rssi:-47}{lqi:108}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x89 0xc1 0x06 0x0f 0x01 0x03 0x2f 0x39 0x8a}}
+{{(rxPacket)}{len:9}{timeUs:422608721}{crc:Pass}{rssi:-57}{lqi:110}{phy:0}{isAck:False}{syncWordId:0}{antenna:0}{channelHopIdx:254}{payload: 0xeb 0x90 0x08 0xb3 0x01 0x03 0x06 0x0b 0x39}}
+
+
+
+>
+>
+
+
+>
+>
+
